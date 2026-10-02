@@ -1,25 +1,29 @@
 {
+  "id": "/AMS-Calculator-/",
   "name": "AMS Calculator",
   "short_name": "AMS CAL",
   "description": "Analog & Mixed-Signal IC Engineering Calculator",
-  "start_url": "./index.html",
-  "scope": "./",
+  "start_url": "/AMS-Calculator-/",
+  "scope": "/AMS-Calculator-/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
   "background_color": "#0b1020",
   "theme_color": "#0b1020",
+  "prefer_related_applications": false,
   "icons": [
     {
-      "src": "icons/icon-192.png",
+      "src": "/AMS-Calculator-/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icons/icon-512.png",
+      "src": "/AMS-Calculator-/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
   ]
 }
+
