@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0b1020">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>Analog & Mixed-Signal IC Calculator</title>
+<style>
+:root{
+  --bg:#0b1020;--panel:#121a2b;--panel2:#172238;--text:#eef4ff;
+  --muted:#8290a8;--op:#f59e0b;--eq:#1677ff;--clear:#ef476f;
+  --back:#52627d;--accent:#42a5ff;--green:#46d39a;--border:rgba(255,255,255,.08)
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);
+font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+display:flex;justify-content:center}
+.app{width:min(100%,430px);min-height:100vh;padding:10px 12px 8px;display:flex;flex-direction:column}
+.header{font-size:15px;font-weight:700;padding:3px 4px 8px}
+.page{display:none;flex:1;flex-direction:column;gap:8px}
+.page.active{display:flex}
+.display{background:linear-gradient(145deg,var(--panel2),var(--panel));
+border:1px solid var(--border);border-radius:16px;padding:8px 13px;min-height:58px;
+display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+.label{color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.7px;margin-bottom:3px}
+.value{text-align:right;white-space:nowrap;overflow-x:auto;scrollbar-width:none;font-variant-numeric:tabular-nums}
+.value::-webkit-scrollbar{display:none}
+#previous{font-size:18px;color:#b9c7dc}
+#input{font-size:26px;font-weight:600}
+.result-box{display:grid;grid-template-columns:1fr 1fr;min-height:70px;
+background:linear-gradient(145deg,var(--panel2),var(--panel));
+border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.result-half{padding:8px 13px;display:flex;flex-direction:column;justify-content:center;min-width:0}
+.result-half:first-child{border-right:1px solid var(--border)}
+.result-half .value{font-size:24px;font-weight:700;color:var(--green)}
+.result-half.right .value{color:#eef4ff}
+.result-caption{color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px}
+.math-row{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}
+.math,.suffix{min-height:36px;border:1px solid var(--border);border-radius:10px;
+background:#26344d;color:#cfe0fa;font-size:14px;font-weight:700}
+.suffix-section{display:flex;flex-direction:column;gap:4px}
+.suffix-title{font-size:8px;color:var(--muted);letter-spacing:.6px;text-transform:uppercase;padding-left:3px}
+.suffix-row{display:grid;gap:5px}
+.suffix-row.negative{grid-template-columns:repeat(6,1fr)}
+.suffix-row.positive{grid-template-columns:repeat(4,1fr)}
+.keypad{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:auto}
+button{border:1px solid var(--border);border-radius:14px;min-height:52px;background:#18243a;
+color:var(--text);font-size:20px;font-weight:600;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.18)}
+button:active{transform:scale(.96)}
+.op{color:var(--op);background:#202a3a}.clear{color:#fff;background:#a93255}
+.back{color:#fff;background:var(--back)}.equals{background:var(--eq);color:#fff}
+.full{grid-column:1/-1}.wide{grid-column:span 2}
+.hint{text-align:center;color:#66748c;font-size:8px;padding:1px 0}
+
+.ohm-title{font-size:19px;font-weight:750;margin:2px 2px 0}
+.ohm-subtitle{font-size:10px;color:var(--muted);margin:0 2px 4px}
+.ohm-card{background:linear-gradient(145deg,var(--panel2),var(--panel));
+border:1px solid var(--border);border-radius:16px;padding:11px}
+.field{display:grid;grid-template-columns:40px 1fr 72px;gap:8px;align-items:center;margin-bottom:9px}
+.field:last-child{margin-bottom:0}
+.field-label{font-size:19px;font-weight:750;text-align:center}
+.field input{width:100%;height:46px;border:1px solid var(--border);border-radius:11px;
+background:#0e1627;color:var(--text);font-size:21px;padding:0 11px;outline:none}
+.field input:focus{border-color:var(--accent)}
+.field select{height:46px;border:1px solid var(--border);border-radius:11px;
+background:#0e1627;color:#cfe0fa;font-size:14px;padding:0 5px}
+.unit-line{font-size:9px;color:var(--muted);margin:-4px 0 9px 48px}
+.ohm-result{background:#10192b;border:1px solid var(--border);border-radius:13px;
+padding:10px;margin-top:8px}
+.ohm-result .main{font-size:25px;font-weight:750;color:var(--green);text-align:right}
+.ohm-result .formula{font-size:11px;color:var(--muted);margin-top:3px;text-align:right}
+.ohm-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}
+.secondary{background:#26344d;color:#d8e5f8;font-size:15px;min-height:45px}
+.nav{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding-top:7px}
+.nav button{min-height:43px;font-size:13px;background:#162238;color:#93a5c1}
+.nav button.active{background:#263f63;color:#fff;border-color:#3978b7}
+
+@media(max-height:700px){
+ .app{padding:7px 10px 5px}.header{padding-bottom:5px}.display{min-height:51px;padding:6px 11px}
+ button{min-height:45px;border-radius:12px}.math,.suffix{min-height:31px}
+ .result-box{min-height:61px}.result-half .value{font-size:21px}
+ .field input,.field select{height:42px}.field{margin-bottom:7px}
+}
+
+.tool-card{background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:15px;margin-bottom:12px}
+.tool-title{font-size:17px;font-weight:800;margin-bottom:12px}
+.field-row{display:grid;grid-template-columns:54px minmax(0,1fr) 86px;gap:8px;align-items:center;margin:9px 0}
+.field-row label{color:var(--muted);font-weight:700}
+.field-row input,.field-row select{width:100%;box-sizing:border-box;border:1px solid var(--border);background:var(--panel2);color:var(--text);border-radius:10px;padding:11px 10px;font-size:15px;outline:none}
+.field-row input:focus,.field-row select:focus{border-color:var(--accent)}
+.formula{color:var(--muted);font-size:12px;line-height:1.5;margin-top:10px}
+.result-line{display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding:12px;background:var(--panel2);border-radius:11px}
+.result-line span{color:var(--muted);font-weight:700}
+.result-line strong{color:var(--green);font-size:19px}
+.segmented{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px}
+.seg{border:1px solid var(--border);background:var(--panel2);color:var(--muted);border-radius:10px;padding:10px;font-weight:800}
+.seg.active{color:var(--text);border-color:var(--accent)}
+.ratio-grid{display:grid;grid-template-columns:minmax(0,1fr) 28px minmax(0,1fr);grid-template-rows:auto auto;gap:10px 7px;align-items:center}
+.ratio-box{min-width:0;background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:9px}
+.ratio-box input{width:100%;box-sizing:border-box;border:0;outline:0;background:transparent;color:var(--text);font-size:16px;font-weight:700}
+.ratio-label{display:block;color:var(--muted);font-size:12px;font-weight:800;margin-bottom:4px}
+.ratio-arrow{text-align:center;color:var(--accent);font-size:20px;font-weight:900}
+.output-box{border-color:rgba(70,211,154,.35)}
+.ratio-output{min-height:22px;color:var(--green);font-size:16px;font-weight:800;padding:0 2px}
+@media(max-width:380px){.field-row{grid-template-columns:46px minmax(0,1fr) 78px}.tool-card{padding:12px}}
+
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">Analog & Mixed-Signal IC Calculator</div>
+
+  <!-- PAGE 1 -->
+  <section id="pageCalc" class="page active">
+    <div class="display">
+      <div class="label">Previous Answer</div>
+      <div class="value" id="previous">—</div>
+    </div>
+    <div class="display">
+      <div class="label">Current Input</div>
+      <div class="value" id="input">0</div>
+    </div>
+
+    <div class="result-box">
+      <div class="result-half">
+        <div class="result-caption">Engineering</div>
+        <div class="value" id="resultEng">0</div>
+      </div>
+      <div class="result-half right">
+        <div class="result-caption">Decimal</div>
+        <div class="value" id="resultDecimal">0</div>
+      </div>
+    </div>
+
+    <div class="math-row">
+      <button class="math" onclick="square()">x²</button>
+      <button class="math" onclick="cube()">x³</button>
+      <button class="math" onclick="add('^')">xʸ</button>
+      <button class="math" onclick="sqrtExpr()">√</button>
+      <button class="math" onclick="add('%')">%</button>
+      <button class="math" onclick="reciprocal()">1/x</button>
+      <button class="math" onclick="add('π')">π</button>
+      <button class="math" onclick="add('e')">e</button>
+    </div>
+
+    <div class="suffix-section">
+      <div class="suffix-title">Engineering suffix · 10⁻³ steps</div>
+      <div class="suffix-row negative">
+        <button class="suffix" onclick="addSuffix('a')">a</button>
+        <button class="suffix" onclick="addSuffix('f')">f</button>
+        <button class="suffix" onclick="addSuffix('p')">p</button>
+        <button class="suffix" onclick="addSuffix('n')">n</button>
+        <button class="suffix" onclick="addSuffix('u')">u</button>
+        <button class="suffix" onclick="addSuffix('m')">m</button>
+      </div>
+      <div class="suffix-title">Engineering suffix · 10³ steps</div>
+      <div class="suffix-row positive">
+        <button class="suffix" onclick="addSuffix('K')">K</button>
+        <button class="suffix" onclick="addSuffix('M')">M</button>
+        <button class="suffix" onclick="addSuffix('G')">G</button>
+        <button class="suffix" onclick="addSuffix('T')">T</button>
+      </div>
+    </div>
+
+    <div class="keypad">
+      <button class="clear" onclick="clearAll()">C</button>
+      <button class="back" onclick="backspace()">⌫</button>
+      <button onclick="add('(')">(</button>
+      <button onclick="add(')')">)</button>
+
+      <button onclick="add('7')">7</button><button onclick="add('8')">8</button>
+      <button onclick="add('9')">9</button><button class="op" onclick="add('/')">÷</button>
+
+      <button onclick="add('4')">4</button><button onclick="add('5')">5</button>
+      <button onclick="add('6')">6</button><button class="op" onclick="add('*')">×</button>
+
+      <button onclick="add('1')">1</button><button onclick="add('2')">2</button>
+      <button onclick="add('3')">3</button><button class="op" onclick="add('-')">−</button>
+
+      <button class="wide" onclick="add('0')">0</button>
+      <button onclick="add('.')">.</button><button class="op" onclick="add('+')">+</button>
+
+      <button class="equals full" onclick="calculate()">=</button>
+    </div>
+    <div class="hint">Tap Previous Answer to reuse it</div>
+  </section>
+
+  <!-- PAGE 2 -->
+  <section id="pageOhm" class="page">
+    <div>
+      <div class="ohm-title">Ohm’s Law</div>
+      <div class="ohm-subtitle">Enter any two values. The third is calculated automatically.</div>
+    </div>
+
+    <div class="ohm-card">
+      <div class="field">
+        <div class="field-label">V</div>
+        <input id="ohmV" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Voltage">
+        <select id="unitV">
+          <option value="1">V</option><option value="1e-3">mV</option>
+          <option value="1e-6">uV</option><option value="1e-9">nV</option>
+          <option value="1e3">KV</option>
+        </select>
+      </div>
+      <div class="field">
+        <div class="field-label">I</div>
+        <input id="ohmI" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Current">
+        <select id="unitI">
+          <option value="1">A</option><option value="1e-3">mA</option>
+          <option value="1e-6">uA</option><option value="1e-9">nA</option>
+          <option value="1e-12">pA</option>
+        </select>
+      </div>
+      <div class="field">
+        <div class="field-label">R</div>
+        <input id="ohmR" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Resistance">
+        <select id="unitR">
+          <option value="1">Ω</option><option value="1e3">KΩ</option>
+          <option value="1e6">MΩ</option><option value="1e-3">mΩ</option>
+        </select>
+      </div>
+
+      <div class="ohm-result">
+        <div class="main" id="ohmAnswer">—</div>
+        <div class="formula" id="ohmFormula">Enter any two values</div>
+      </div>
+
+      <div class="ohm-actions">
+        <button class="secondary" onclick="calculateOhm()">Calculate</button>
+        <button class="secondary" onclick="clearOhm()">Clear</button>
+      </div>
+
+    </div>
+
+    <div class="hint">Examples: 10 V + 5 A → 2 Ω &nbsp; | &nbsp; 1.2V + 2mA → 600 Ω</div>
+
+    <div class="ohm-title" style="font-size:17px;margin-top:4px">Frequency ↔ Time</div>
+    <div class="ohm-subtitle">Enter either frequency or time. The other value updates automatically.</div>
+    <div class="ohm-card">
+      <div class="field">
+        <div class="field-label">f</div>
+        <input id="freqInput" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Frequency">
+        <select id="freqUnit">
+          <option value="1">Hz</option><option value="1e3">KHz</option><option value="1e6">MHz</option><option value="1e9">GHz</option><option value="1e12">THz</option>
+        </select>
+      </div>
+      <div class="field">
+        <div class="field-label">t</div>
+        <input id="timeInput" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Time">
+        <select id="timeUnit">
+          <option value="1">s</option><option value="1e-3">ms</option><option value="1e-6">us</option><option value="1e-9">ns</option><option value="1e-12">ps</option><option value="1e-15">fs</option>
+        </select>
+      </div>
+      <div class="ohm-result">
+        <div class="main" id="freqTimeAnswer">—</div>
+        <div class="formula" id="freqTimeFormula">f = 1/t &nbsp; | &nbsp; t = 1/f</div>
+      </div>
+      <div class="ohm-actions">
+        <button class="secondary" onclick="calculateFreqTime('freq')">Calculate</button>
+        <button class="secondary" onclick="clearFreqTime()">Clear</button>
+      </div>
+    </div>
+  </section>
+
+
+  <section id="pageEng" class="page">
+    <div class="page-title">Engineering Tools</div>
+
+    <div class="tool-card">
+      <div class="tool-title">dB ↔ Linear</div>
+      <div class="field-row">
+        <label>dB</label>
+        <input id="dbVal" type="text" inputmode="text" placeholder="e.g. 20">
+      </div>
+      <div class="field-row">
+        <label>Linear</label>
+        <input id="linVal" type="text" inputmode="text" placeholder="e.g. 10">
+      </div>
+      <div class="segmented">
+        <button id="dbAmpBtn" class="seg active" type="button">Amplitude</button>
+        <button id="dbPowBtn" class="seg" type="button">Power</button>
+      </div>
+      <div class="formula">Amplitude: dB = 20·log₁₀(A) &nbsp; | &nbsp; Power: dB = 10·log₁₀(P)</div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-title">τ Calculator</div>
+      <div class="field-row">
+        <label>R</label>
+        <input id="tauR" type="text" inputmode="text" placeholder="e.g. 10K">
+        <select id="tauRUnit">
+          <option value="1">Ω</option>
+          <option value="1e3">KΩ</option>
+          <option value="1e6">MΩ</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <label>C</label>
+        <input id="tauC" type="text" inputmode="text" placeholder="e.g. 5p">
+        <select id="tauCUnit">
+          <option value="1">F</option>
+          <option value="1e-3">mF</option>
+          <option value="1e-6">µF</option>
+          <option value="1e-9">nF</option>
+          <option value="1e-12">pF</option>
+          <option value="1e-15">fF</option>
+        </select>
+      </div>
+      <div class="result-line"><span>τ</span><strong id="tauResult">—</strong></div>
+      <div class="formula">τ = R × C</div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-title">Cutoff Frequency</div>
+      <div class="field-row">
+        <label>R</label>
+        <input id="fcR" type="text" inputmode="text" placeholder="e.g. 10K">
+        <select id="fcRUnit">
+          <option value="1">Ω</option>
+          <option value="1e3">KΩ</option>
+          <option value="1e6">MΩ</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <label>C</label>
+        <input id="fcC" type="text" inputmode="text" placeholder="e.g. 5p">
+        <select id="fcCUnit">
+          <option value="1">F</option>
+          <option value="1e-3">mF</option>
+          <option value="1e-6">µF</option>
+          <option value="1e-9">nF</option>
+          <option value="1e-12">pF</option>
+          <option value="1e-15">fF</option>
+        </select>
+      </div>
+      <div class="result-line"><span>fc</span><strong id="fcResult">—</strong></div>
+      <div class="formula">fc = 1 / (2πRC)</div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-title">Custom Ratio</div>
+      <div class="ratio-grid">
+        <div class="ratio-box">
+          <span class="ratio-label">a</span>
+          <input id="ratioA" type="text" inputmode="text" placeholder="a">
+        </div>
+        <div class="ratio-arrow">→</div>
+        <div class="ratio-box">
+          <span class="ratio-label">b</span>
+          <input id="ratioB" type="text" inputmode="text" placeholder="b">
+        </div>
+
+        <div class="ratio-box">
+          <span class="ratio-label">x</span>
+          <input id="ratioX" type="text" inputmode="text" placeholder="x">
+        </div>
+        <div class="ratio-arrow">→</div>
+        <div class="ratio-box output-box">
+          <span class="ratio-label">y</span>
+          <div id="ratioY" class="ratio-output">—</div>
+        </div>
+      </div>
+      <div class="formula">y = (x × b) / a</div>
+    </div>
+  </section>
+
+  <div class="nav">
+    <button id="navCalc" class="active" onclick="showPage('calc')">Calculator</button>
+    <button id="navOhm" onclick="showPage('ohm')">Ohm’s Law</button>
+    <button id="navEng" onclick="showPage('eng')">Eng Tools</button>
+  </div>
+</div>
+
+<script>
+const SUFFIX={a:1e-18,f:1e-15,p:1e-12,n:1e-9,u:1e-6,m:1e-3,k:1e3,K:1e3,M:1e6,G:1e9,T:1e12};
+let expr="",previous=null;
+const inputEl=document.getElementById("input");
+const resultEng=document.getElementById("resultEng");
+const resultDecimal=document.getElementById("resultDecimal");
+const previousEl=document.getElementById("previous");
+
+function displayExpr(s){return s.replace(/\*/g,"×").replace(/\//g,"÷").replace(/\^/g,"^")}
+function normalizeExpression(s){
+  return s
+    .replace(/(\d+(?:\.\d+)?|\.\d+)([afpnumkK MGT])/g,(match,number,suffix)=>{
+      suffix=suffix.replace(" ",""); return "("+Number(number)*SUFFIX[suffix]+")";
+    })
+    .replace(/(\d+(?:\.\d+)?|\.\d+)π/g,(match,number)=>"("+Number(number)*Math.PI+")")
+    .replace(/(\d+(?:\.\d+)?|\.\d+)e(?![A-Za-z])/g,(match,number)=>"("+Number(number)*Math.E+")")
+    .replace(/sqrt\(/g,"Math.sqrt(");
+}
+function evaluate(s){
+  let n=normalizeExpression(s);
+  n=n.replace(/π/g,"("+Math.PI+")").replace(/(?<![A-Za-z])e(?![A-Za-z])/g,"("+Math.E+")");
+  n=n.replace(/\^/g,"**");
+  n=n.replace(/((?:\([^()]+\)|\d+(?:\.\d+)?|\.\d+))%/g,"($1/100)");
+  if(!/^[0-9eE+\-*/().\s]+$/.test(n) && !/Math\.sqrt/.test(n)) throw new Error("Invalid");
+  const r=Function('"use strict";return ('+n+')')();
+  if(!Number.isFinite(r)) throw new Error("Invalid");
+  return r;
+}
+function formatEngineering(n){
+  if(n===0)return "0";
+  const table=[[-18,"a"],[-15,"f"],[-12,"p"],[-9,"n"],[-6,"u"],[-3,"m"],[0,""],[3,"K"],[6,"M"],[9,"G"],[12,"T"]];
+  let e=Math.floor(Math.log10(Math.abs(n))/3)*3;
+  e=Math.max(-18,Math.min(12,e));
+  let m=n/10**e;
+  if(Math.abs(m)>=1000&&e<12){e+=3;m=n/10**e}
+  if((e===-18&&Math.abs(m)<1)||(e===12&&Math.abs(m)>=1000))return n.toExponential(6);
+  return Number(m.toFixed(3)).toString()+(table.find(x=>x[0]===e)?.[1]||"");
+}
+function formatDecimal(n){
+  if(n===0)return "0";
+  const rounded=Number(n.toFixed(3));
+  if(Math.abs(rounded)>=1e15 || (Math.abs(rounded)>0 && Math.abs(rounded)<0.001)){
+    return n.toExponential(3);
+  }
+  return rounded.toString();
+}
+function render(){
+  inputEl.textContent=expr?displayExpr(expr):"0";
+  try{
+    if(expr){
+      const r=evaluate(expr);
+      resultEng.textContent=formatEngineering(r);
+      resultDecimal.textContent=formatDecimal(r);
+    }else{resultEng.textContent="0";resultDecimal.textContent="0"}
+  }catch(e){resultEng.textContent="—";resultDecimal.textContent="—"}
+}
+function add(v){if(expr==="0"&&/[0-9.]/.test(v))expr="";expr+=v;render()}
+function addSuffix(s){if(!expr||!(/(\d|\.)$/.test(expr)))return;expr+=s;render()}
+function square(){if(expr){expr="("+expr+")^2";render()}}
+function cube(){if(expr){expr="("+expr+")^3";render()}}
+function sqrtExpr(){if(expr){expr="sqrt("+expr+")";render()}}
+function reciprocal(){if(expr){expr="1/("+expr+")";render()}}
+function calculate(){
+  try{if(!expr)return;const r=evaluate(expr);previous=r;previousEl.textContent=formatEngineering(r);expr=formatEngineering(r);render()}catch(e){}
+}
+function clearAll(){expr="";render()}
+function backspace(){if(expr){expr=expr.slice(0,-1);render()}}
+previousEl.addEventListener("click",()=>{if(previous!==null){expr+=formatEngineering(previous);render()}});
+
+function showPage(page){
+  document.getElementById("pageCalc").classList.toggle("active",page==="calc");
+  document.getElementById("pageOhm").classList.toggle("active",page==="ohm");
+  document.getElementById("pageEng").classList.toggle("active",page==="eng");
+  document.getElementById("navCalc").classList.toggle("active",page==="calc");
+  document.getElementById("navOhm").classList.toggle("active",page==="ohm");
+  document.getElementById("navEng").classList.toggle("active",page==="eng");
+}
+
+// Engineering Tools
+function engineeringValue(value, unitEl){
+  const n=parseEngineering(value);
+  if(n===null || !Number.isFinite(n)) return null;
+  return n*Number(unitEl.value);
+}
+function toolEng(n){
+  if(!Number.isFinite(n)) return "—";
+  return formatEngineering(n);
+}
+
+let dbMode="amplitude";
+function updateDbFromLinear(){
+  const lin=parseEngineering(document.getElementById("linVal").value);
+  if(lin===null || lin<=0){document.getElementById("dbVal").value="";return}
+  const db=dbMode==="amplitude"?20*Math.log10(lin):10*Math.log10(lin);
+  document.getElementById("dbVal").value=toolEng(db);
+}
+function updateLinearFromDb(){
+  const db=parseEngineering(document.getElementById("dbVal").value);
+  if(db===null){document.getElementById("linVal").value="";return}
+  const lin=dbMode==="amplitude"?Math.pow(10,db/20):Math.pow(10,db/10);
+  document.getElementById("linVal").value=toolEng(lin);
+}
+document.getElementById("dbVal").addEventListener("input",updateLinearFromDb);
+document.getElementById("linVal").addEventListener("input",updateDbFromLinear);
+document.getElementById("dbAmpBtn").addEventListener("click",()=>{
+  dbMode="amplitude";
+  document.getElementById("dbAmpBtn").classList.add("active");
+  document.getElementById("dbPowBtn").classList.remove("active");
+  updateLinearFromDb();
+});
+document.getElementById("dbPowBtn").addEventListener("click",()=>{
+  dbMode="power";
+  document.getElementById("dbPowBtn").classList.add("active");
+  document.getElementById("dbAmpBtn").classList.remove("active");
+  updateLinearFromDb();
+});
+
+function updateTau(){
+  const R=engineeringValue(document.getElementById("tauR").value,document.getElementById("tauRUnit"));
+  const C=engineeringValue(document.getElementById("tauC").value,document.getElementById("tauCUnit"));
+  const out=document.getElementById("tauResult");
+  if(R===null||C===null){out.textContent="—";return}
+  out.textContent=toolEng(R*C)+"s";
+}
+function updateFc(){
+  const R=engineeringValue(document.getElementById("fcR").value,document.getElementById("fcRUnit"));
+  const C=engineeringValue(document.getElementById("fcC").value,document.getElementById("fcCUnit"));
+  const out=document.getElementById("fcResult");
+  if(R===null||C===null||R===0||C===0){out.textContent="—";return}
+  out.textContent=toolEng(1/(2*Math.PI*R*C))+"Hz";
+}
+["tauR","tauC"].forEach(id=>document.getElementById(id).addEventListener("input",updateTau));
+["tauRUnit","tauCUnit"].forEach(id=>document.getElementById(id).addEventListener("change",updateTau));
+["fcR","fcC"].forEach(id=>document.getElementById(id).addEventListener("input",updateFc));
+["fcRUnit","fcCUnit"].forEach(id=>document.getElementById(id).addEventListener("change",updateFc));
+
+function updateRatio(){
+  const a=parseEngineering(document.getElementById("ratioA").value);
+  const b=parseEngineering(document.getElementById("ratioB").value);
+  const x=parseEngineering(document.getElementById("ratioX").value);
+  const out=document.getElementById("ratioY");
+  if(a===null||b===null||x===null||a===0){out.textContent="—";return}
+  out.textContent=toolEng((x*b)/a);
+}
+["ratioA","ratioB","ratioX"].forEach(id=>document.getElementById(id).addEventListener("input",updateRatio));
+
+
+function parseEngineering(value){
+  if(!value)return null;
+  const m=value.trim().match(/^([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*([afpnumkK MGT]?)$/);
+  if(!m)return null;
+  const suffix=m[2].replace(" ","");
+  return Number(m[1])*(SUFFIX[suffix]||1);
+}
+function selected(id){return Number(document.getElementById(id).value)}
+function calculateOhm(){
+  const vRaw=parseEngineering(document.getElementById("ohmV").value);
+  const iRaw=parseEngineering(document.getElementById("ohmI").value);
+  const rRaw=parseEngineering(document.getElementById("ohmR").value);
+  const v=vRaw===null?null:vRaw*selected("unitV");
+  const i=iRaw===null?null:iRaw*selected("unitI");
+  const r=rRaw===null?null:rRaw*selected("unitR");
+  const count=[v,i,r].filter(x=>x!==null&&!Number.isNaN(x)).length;
+  let answer=null,formula="";
+  if(count!==2){document.getElementById("ohmAnswer").textContent="Enter any 2 values";document.getElementById("ohmFormula").textContent="V = I×R  |  I = V/R  |  R = V/I";return}
+  if(v===null&&i!==null&&r!==null){answer=i*r;formula="V = I × R";document.getElementById("ohmAnswer").textContent=formatEngineering(answer)+"V"}
+  else if(i===null&&v!==null&&r!==null){answer=v/r;formula="I = V ÷ R";document.getElementById("ohmAnswer").textContent=formatEngineering(answer)+"A"}
+  else if(r===null&&v!==null&&i!==null){if(i===0){document.getElementById("ohmAnswer").textContent="Undefined";document.getElementById("ohmFormula").textContent="Current cannot be 0 for R = V/I";return}answer=v/i;formula="R = V ÷ I";document.getElementById("ohmAnswer").textContent=formatEngineering(answer)+"Ω"}
+  document.getElementById("ohmFormula").textContent=formula;
+}
+function clearOhm(){
+  ["ohmV","ohmI","ohmR"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("ohmAnswer").textContent="—";
+  document.getElementById("ohmFormula").textContent="Enter any two values";
+}
+["ohmV","ohmI","ohmR","unitV","unitI","unitR"].forEach(id=>{
+  document.getElementById(id).addEventListener("input",()=>{if(["ohmV","ohmI","ohmR"].includes(id))calculateOhm()});
+  document.getElementById(id).addEventListener("change",calculateOhm);
+});
+function insertSuffixToActive(s){
+  const el=document.activeElement;
+  if(!el || !["ohmV","ohmI","ohmR","freqInput","timeInput"].includes(el.id)) return;
+  const pos=el.selectionStart ?? el.value.length;
+  el.value=el.value.slice(0,pos)+s+el.value.slice(el.selectionEnd ?? pos);
+  el.focus();
+  try{el.setSelectionRange(pos+1,pos+1)}catch(e){}
+  if(el.id.startsWith("ohm")) calculateOhm();
+  else calculateFreqTime(el.id==="freqInput"?"freq":"time");
+}
+function calculateFreqTime(source){
+  const fEl=document.getElementById("freqInput"), tEl=document.getElementById("timeInput");
+  const f=parseEngineering(fEl.value), t=parseEngineering(tEl.value);
+  const fHz=f===null?null:f*Number(document.getElementById("freqUnit").value);
+  const tSec=t===null?null:t*Number(document.getElementById("timeUnit").value);
+  if(source==="freq" && fHz!==null && fHz>0){
+    const out=1/fHz;
+    tEl.value=formatEngineering(out/Number(document.getElementById("timeUnit").value));
+    document.getElementById("freqTimeAnswer").textContent="t = "+formatEngineering(out)+"s";
+    document.getElementById("freqTimeFormula").textContent="t = 1/f";
+  } else if(source==="time" && tSec!==null && tSec>0){
+    const out=1/tSec;
+    fEl.value=formatEngineering(out/Number(document.getElementById("freqUnit").value));
+    document.getElementById("freqTimeAnswer").textContent="f = "+formatEngineering(out)+"Hz";
+    document.getElementById("freqTimeFormula").textContent="f = 1/t";
+  } else {
+    document.getElementById("freqTimeAnswer").textContent="Enter frequency or time";
+  }
+}
+function clearFreqTime(){
+  document.getElementById("freqInput").value="";
+  document.getElementById("timeInput").value="";
+  document.getElementById("freqTimeAnswer").textContent="—";
+  document.getElementById("freqTimeFormula").textContent="f = 1/t  |  t = 1/f";
+}
+["freqInput","timeInput"].forEach(id=>{
+  document.getElementById(id).addEventListener("input",()=>calculateFreqTime(id==="freqInput"?"freq":"time"));
+});
+["freqUnit","timeUnit"].forEach(id=>document.getElementById(id).addEventListener("change",()=>calculateFreqTime("freq")));
+document.addEventListener("keydown",e=>{
+  const target=e.target;
+  const isField=target && (target.tagName==="INPUT" || target.tagName==="TEXTAREA" ||
+    target.tagName==="SELECT" || target.isContentEditable);
+  if(isField) return;
+  if(!document.getElementById("pageCalc").classList.contains("active")) return;
+
+  if(/[0-9.+\-*/()]/.test(e.key)){add(e.key);e.preventDefault()}
+  else if(/[afpnumkKMGT]/.test(e.key)){addSuffix(e.key);e.preventDefault()}
+  else if(e.key==="e"||e.key==="π"){add(e.key);e.preventDefault()}
+  else if(e.key==="^"||e.key==="%"){add(e.key);e.preventDefault()}
+  else if(e.key==="Enter"||e.key==="="){calculate();e.preventDefault()}
+  else if(e.key==="Escape"){clearAll();e.preventDefault()}
+  else if(e.key==="Backspace"){backspace();e.preventDefault()}
+});
+render();
+</script>
+
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+  });
+}
+</script>
+
+</body>
+</html>
